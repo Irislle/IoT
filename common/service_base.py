@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-"""Base class for microservices to standardize configuration and MQTT setup."""
+"""Base class for microservices to standardize configuration and MQTT setup.
+
+Services inherit this to share lifecycle behavior and reduce duplication.
+"""
 
 import logging
 

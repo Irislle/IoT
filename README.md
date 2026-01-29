@@ -1,6 +1,6 @@
 # IoT Microservices Platform (MQTT + REST)
 
-This repository provides a reference implementation of the IoT platform described in the architecture diagram, developed for the course **“IoT and Cloud for Sustainable Communities.”** Each component is an independent Python microservice that communicates through MQTT (publish/subscribe) and REST (request/response), with a clear separation between asynchronous telemetry/commands and synchronous configuration queries. Configuration is served at runtime by the Home Catalog REST provider, so you can add or remove devices without changing source code.
+This repository provides a reference implementation of the IoT platform described in the architecture diagram, developed for the course **“IoT and Cloud for Sustainable Communities.”** Each component is an independent Python microservice (Python is the primary implementation language) that communicates through MQTT (publish/subscribe) and REST (request/response), with a clear separation between asynchronous telemetry/commands and synchronous configuration queries. Configuration is served at runtime by the Home Catalog REST provider, so you can add or remove devices without changing source code.
 
 This project is **not** a direct copy of the reference example. It adapts the design with an **alert-based control strategy** and **HVAC-oriented actuation** (cooling/heating commands) instead of simple timer-based lighting, aligning the workflow with realistic building management scenarios.
 
