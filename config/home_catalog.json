@@ -1,0 +1,57 @@
+{
+  "mqtt": {
+    "host": "localhost",
+    "port": 1883,
+    "keepalive": 60
+  },
+  "services": {
+    "rpi_temperature_publisher": {
+      "room_id": "equip-1",
+      "device_id": "rpi-1",
+      "topic": "iot/temperature/raw",
+      "sampling_s": 5
+    },
+    "postprocess_time_shift": {
+      "input_topic": "iot/temperature/raw",
+      "output_topic": "iot/temperature/processed",
+      "window_size": 5
+    },
+    "alert_strategy": {
+      "input_topic": "iot/temperature/processed",
+      "alert_topic": "iot/alerts",
+      "indicator_topic": "iot/indicator/cmd",
+      "high_threshold": 26.0,
+      "low_threshold": 24.0,
+      "cooldown_s": 30
+    },
+    "arduino_indicator": {
+      "command_topic": "iot/indicator/cmd",
+      "state_topic": "iot/indicator/state",
+      "device_id": "indicator-1",
+      "room_id": "equip-1"
+    },
+    "telegram_bot": {
+      "alert_topic": "iot/alerts",
+      "hvac_command_topic": "iot/hvac/cmd",
+      "status_topic": "iot/hvac/state",
+      "bot_token": "REPLACE_ME",
+      "chat_id": "REPLACE_ME"
+    },
+    "hvac_connector": {
+      "command_topic": "iot/hvac/cmd",
+      "state_topic": "iot/hvac/state",
+      "device_id": "hvac-1",
+      "room_id": "equip-1"
+    },
+    "thingspeak_adapter": {
+      "topics": [
+        "iot/temperature/processed",
+        "iot/alerts",
+        "iot/hvac/state",
+        "iot/indicator/state"
+      ],
+      "api_key": "REPLACE_ME",
+      "endpoint": "https://api.thingspeak.com/update.json"
+    }
+  }
+}
