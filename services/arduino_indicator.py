@@ -27,7 +27,8 @@ class ArduinoIndicator(ServiceBase):
         def handle_message(topic: str, payload: dict) -> None:
             desired_state = payload.get("state", "OFF")
             self._state = desired_state
-            self._logger.info("Indicator set to %s", self._state)
+            reason = payload.get("reason", "N/A")
+            self._logger.info("Indicator set to %s (reason=%s)", self._state, reason)
             state_payload = ActuatorState(
                 ts=int(time.time()),
                 device=device_id,

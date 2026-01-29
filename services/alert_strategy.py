@@ -9,7 +9,7 @@ from common.service_base import ServiceBase
 
 
 class AlertStrategy(ServiceBase):
-    """Active control strategy evaluating thresholds and issuing commands."""
+    """Evaluate thresholds and publish alert events plus indicator commands."""
 
     def __init__(self, home_catalog_url: str) -> None:
         super().__init__("alert_strategy", home_catalog_url)
@@ -44,16 +44,22 @@ class AlertStrategy(ServiceBase):
                     self._in_alert = False
                     self._last_alert_ts = now
                     self._publish_alert(room_id, temp_c, "RECOVERED", "INFO", alert_topic)
-                    self.mqtt.publish_json(indicator_topic, {"state": "OFF", "room_id": room_id, "ts": now})
+                    self.mqtt.publish_json(
+                        indicator_topic,
+                        {"state": "OFF", "room_id": room_id, "ts": now, "reason": "RECOVERED"},
+                    )
                 return
 
-            # Trigger an alert state and publish an actuation command when the
+            # Trigger an alert state and publish an indicator command when the
             # high threshold is exceeded and cooldown permits.
             if temp_c >= high_threshold and now - self._last_alert_ts >= cooldown_s:
                 self._in_alert = True
                 self._last_alert_ts = now
                 self._publish_alert(room_id, temp_c, "OVERHEAT", "WARN", alert_topic)
-                self.mqtt.publish_json(indicator_topic, {"state": "ON", "room_id": room_id, "ts": now})
+                self.mqtt.publish_json(
+                    indicator_topic,
+                    {"state": "ON", "room_id": room_id, "ts": now, "reason": "OVERHEAT"},
+                )
 
         self.mqtt.subscribe([input_topic], handle_message)
         self._logger.info("Alert strategy subscribed to %s", input_topic)

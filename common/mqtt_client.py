@@ -24,6 +24,7 @@ class MqttServiceClient:
         self._config = mqtt_config
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
+        self._client.reconnect_delay_set(min_delay=1, max_delay=30)
 
     def connect(self) -> None:
         self._client.connect(self._config.host, self._config.port, self._config.keepalive)
@@ -61,4 +62,11 @@ class MqttServiceClient:
             self._logger.error("Failed to connect to MQTT broker: %s", rc)
 
     def _on_disconnect(self, client: mqtt.Client, userdata: object, rc: int) -> None:
-        self._logger.info("Disconnected from MQTT broker: %s", rc)
+        if rc == 0:
+            self._logger.info("Disconnected from MQTT broker: %s", rc)
+            return
+        self._logger.warning("Unexpected MQTT disconnect (rc=%s); attempting reconnect", rc)
+        try:
+            client.reconnect()
+        except Exception as exc:  # pragma: no cover - best-effort reconnect
+            self._logger.warning("MQTT reconnect attempt failed: %s", exc)

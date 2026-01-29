@@ -89,7 +89,17 @@ class TelegramBotService(ServiceBase):
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     service = TelegramBotService(home_catalog_url=get_home_catalog_url())
-    asyncio.run(service.start())
+    while True:
+        try:
+            asyncio.run(service.start())
+        except KeyboardInterrupt:
+            raise
+        except Exception as exc:  # pragma: no cover - retry loop for bot connectivity
+            logging.getLogger("telegram_bot").warning(
+                "Telegram bot stopped unexpectedly (%s). Retrying in 5s...",
+                exc,
+            )
+            time.sleep(5)
 
 
 if __name__ == "__main__":

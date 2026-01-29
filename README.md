@@ -2,7 +2,7 @@
 
 This repository provides a reference implementation of the IoT platform described in the architecture diagram, developed for the course **“IoT and Cloud for Sustainable Communities.”** Each component is an independent Python microservice (Python is the primary implementation language) that communicates through MQTT (publish/subscribe) and REST (request/response), with a clear separation between asynchronous telemetry/commands and synchronous configuration queries. Configuration is served at runtime by the Home Catalog REST provider, so you can add or remove devices without changing source code.
 
-This project is **not** a direct copy of the reference example. It adapts the design with an **alert-based control strategy** and **HVAC-oriented actuation** (cooling/heating commands) instead of simple timer-based lighting, aligning the workflow with realistic building management scenarios.
+This project is **not** a direct copy of the reference example. It adapts the design with an **alert-based control strategy** and an **HVAC-oriented workflow** (cooling/heating commands issued by operators) instead of simple timer-based lighting, aligning the workflow with realistic building management scenarios.
 
 ## Architecture overview
 
@@ -14,10 +14,10 @@ This project is **not** a direct copy of the reference example. It adapts the de
 - **Home Catalog (REST Provider)**: Serves JSON configuration to each service at startup.
 - **Device Connector (Raspberry Pi)**: Publishes raw temperature telemetry.
 - **Post-process Data Analytics (Time Shift)**: Smooths temperature data and republishes it.
-- **Alert & Intervention Strategy**: Active control strategy that evaluates thresholds, applies hysteresis + cooldown, and publishes alert events plus indicator/actuation commands.
+- **Alert & Intervention Strategy**: Active control strategy that evaluates thresholds, applies hysteresis + cooldown, and publishes alert events plus indicator commands.
 - **Device Connector (Arduino)**: Subscribes to alert commands and publishes indicator state.
 - **Telegram Bot**: User-awareness and optional manual override interface; it is not part of the core control loop.
-- **Device Connector (HVAC)**: Applies HVAC commands and publishes state.
+- **Device Connector (HVAC)**: Applies HVAC commands (issued by the Telegram bot) and publishes state.
 - **ThingSpeak Adapter**: Subscribes to MQTT telemetry/state and pushes data to ThingSpeak via REST.
 
 All exchanged data is JSON with shared identifiers such as `room_id` to correlate across components.
