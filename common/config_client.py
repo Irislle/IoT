@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Home Catalog REST client shared by all microservices."""
+
 import requests
 
 

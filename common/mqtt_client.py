@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Reusable MQTT client wrapper to keep service implementations consistent."""
+
 import json
 import logging
 from dataclasses import dataclass

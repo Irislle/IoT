@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Shared data models for JSON payloads exchanged across services."""
+
 from dataclasses import dataclass
 from typing import Any, Dict
 

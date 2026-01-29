@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""User-awareness interface for alerts and optional manual HVAC commands."""
+
 import asyncio
 import logging
 import time

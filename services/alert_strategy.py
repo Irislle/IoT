@@ -9,6 +9,8 @@ from common.service_base import ServiceBase
 
 
 class AlertStrategy(ServiceBase):
+    """Active control strategy evaluating thresholds and issuing commands."""
+
     def __init__(self, home_catalog_url: str) -> None:
         super().__init__("alert_strategy", home_catalog_url)
         self._logger = logging.getLogger("alert_strategy")
@@ -37,6 +39,7 @@ class AlertStrategy(ServiceBase):
 
             now = int(time.time())
             if self._in_alert:
+                # Remain in alert until temperature drops below the low threshold.
                 if temp_c <= low_threshold:
                     self._in_alert = False
                     self._last_alert_ts = now
@@ -44,6 +47,8 @@ class AlertStrategy(ServiceBase):
                     self.mqtt.publish_json(indicator_topic, {"state": "OFF", "room_id": room_id, "ts": now})
                 return
 
+            # Trigger an alert state and publish an actuation command when the
+            # high threshold is exceeded and cooldown permits.
             if temp_c >= high_threshold and now - self._last_alert_ts >= cooldown_s:
                 self._in_alert = True
                 self._last_alert_ts = now
