@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "home_catalog.json"
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "home_catalog.json"
+CONFIG_PATH = Path(
+    os.getenv("HOME_CATALOG_CONFIG", str(DEFAULT_CONFIG_PATH))
+).resolve()
 
 app = FastAPI(title="Home Catalog", version="1.0.0")
 _catalog_cache: dict | None = None
