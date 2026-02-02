@@ -14,8 +14,8 @@ class AlertStrategy(ServiceBase):
     def __init__(self, home_catalog_url: str) -> None:
         super().__init__("alert_strategy", home_catalog_url)
         self._logger = logging.getLogger("alert_strategy")
-        self._in_alert = False
-        self._last_alert_ts = 0
+        self._in_alert: dict[str, bool] = {}
+        self._last_alert_ts: dict[str, int] = {}
 
     def start(self) -> None:
         self.load_config()
@@ -39,11 +39,13 @@ class AlertStrategy(ServiceBase):
                 return
 
             now = int(time.time())
-            if self._in_alert:
+            in_alert = self._in_alert.get(telemetry.room_id, False)
+            last_alert_ts = self._last_alert_ts.get(telemetry.room_id, 0)
+            if in_alert:
                 # Remain in alert until temperature drops below the low threshold.
                 if telemetry.temp_c <= low_threshold:
-                    self._in_alert = False
-                    self._last_alert_ts = now
+                    self._in_alert[telemetry.room_id] = False
+                    self._last_alert_ts[telemetry.room_id] = now
                     alert_topic = alert_template.format(room_id=telemetry.room_id)
                     indicator_topic = indicator_template.format(room_id=telemetry.room_id)
                     self._publish_alert(
@@ -67,9 +69,9 @@ class AlertStrategy(ServiceBase):
 
             # Trigger an alert state and publish an indicator command when the
             # high threshold is exceeded and cooldown permits.
-            if telemetry.temp_c >= high_threshold and now - self._last_alert_ts >= cooldown_s:
-                self._in_alert = True
-                self._last_alert_ts = now
+            if telemetry.temp_c >= high_threshold and now - last_alert_ts >= cooldown_s:
+                self._in_alert[telemetry.room_id] = True
+                self._last_alert_ts[telemetry.room_id] = now
                 alert_topic = alert_template.format(room_id=telemetry.room_id)
                 indicator_topic = indicator_template.format(room_id=telemetry.room_id)
                 self._publish_alert(
