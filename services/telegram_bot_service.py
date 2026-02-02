@@ -19,7 +19,7 @@ class TelegramBotService(ServiceBase):
         super().__init__("telegram_bot", home_catalog_url)
         self._logger = logging.getLogger("telegram_bot")
         self._chat_id: Optional[str] = None
-        self._hvac_state: Optional[str] = None
+        self._hvac_state: dict[str, str] = {}
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._bot: Optional[Bot] = None
 
@@ -31,9 +31,10 @@ class TelegramBotService(ServiceBase):
 
         cfg = self.service_config
         self._chat_id = cfg["chat_id"]
-        alert_topic = cfg["alert_topic"]
-        hvac_command_topic = cfg["hvac_command_topic"]
-        status_topic = cfg["status_topic"]
+        alert_template = cfg["alert_topic_template"]
+        hvac_command_template = cfg["hvac_command_topic_template"]
+        status_template = cfg["status_topic_template"]
+        rooms = cfg["rooms"]
 
         def handle_alerts(topic: str, payload: dict) -> None:
             if not self._chat_id or self._chat_id == "REPLACE_ME":
@@ -46,17 +47,23 @@ class TelegramBotService(ServiceBase):
                 self._loop.call_soon_threadsafe(asyncio.create_task, self._send_message(message))
 
         def handle_hvac_state(topic: str, payload: dict) -> None:
-            self._hvac_state = payload.get("state")
+            room_id = payload.get("room_id", "unknown")
+            state = payload.get("state")
+            if state is not None:
+                self._hvac_state[room_id] = state
 
+        alert_topics = [(alert_template.format(room_id=room_id), 0) for room_id in rooms]
+        status_topics = [(status_template.format(room_id=room_id), 1) for room_id in rooms]
+        topic_names = {topic for topic, _ in alert_topics}
         self.mqtt.subscribe(
-            [alert_topic, status_topic],
-            lambda t, p: handle_alerts(t, p) if t == alert_topic else handle_hvac_state(t, p),
+            alert_topics + status_topics,
+            lambda t, p: handle_alerts(t, p) if t in topic_names else handle_hvac_state(t, p),
         )
 
         app = Application.builder().token(cfg["bot_token"]).build()
         self._bot = app.bot
-        app.add_handler(CommandHandler("cooling_on", self._make_hvac_cmd(hvac_command_topic, "ON")))
-        app.add_handler(CommandHandler("cooling_off", self._make_hvac_cmd(hvac_command_topic, "OFF")))
+        app.add_handler(CommandHandler("cooling_on", self._make_hvac_cmd(hvac_command_template, "ON")))
+        app.add_handler(CommandHandler("cooling_off", self._make_hvac_cmd(hvac_command_template, "OFF")))
         app.add_handler(CommandHandler("status", self._status))
 
         self._logger.info("Telegram bot started")
@@ -73,17 +80,26 @@ class TelegramBotService(ServiceBase):
         except Exception as exc:  # pragma: no cover - best-effort alerting
             self._logger.warning("Failed to send Telegram message: %s", exc)
 
-    def _make_hvac_cmd(self, topic: str, state: str):
+    def _make_hvac_cmd(self, topic_template: str, state: str):
         async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-            payload = {"state": state, "ts": int(time.time())}
-            self.mqtt.publish_json(topic, payload)
-            await update.message.reply_text(f"HVAC command sent: {state}")
+            rooms = self.service_config["rooms"]
+            room_id = context.args[0] if context.args else rooms[0]
+            if room_id not in rooms:
+                await update.message.reply_text(
+                    f"Unknown room '{room_id}'. Available rooms: {', '.join(rooms)}"
+                )
+                return
+            payload = {"state": state, "ts": int(time.time()), "room_id": room_id}
+            topic = topic_template.format(room_id=room_id)
+            self.mqtt.publish_json(topic, payload, qos=1)
+            await update.message.reply_text(f"HVAC command sent: {state} for room {room_id}")
 
         return handler
 
     async def _status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        state = self._hvac_state or "UNKNOWN"
-        await update.message.reply_text(f"HVAC state: {state}")
+        rooms = self.service_config["rooms"]
+        status_lines = [f"{room_id}: {self._hvac_state.get(room_id, 'UNKNOWN')}" for room_id in rooms]
+        await update.message.reply_text("HVAC state:\\n" + "\\n".join(status_lines))
 
 
 def main() -> None:

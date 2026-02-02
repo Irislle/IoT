@@ -19,10 +19,12 @@ class HvacConnector(ServiceBase):
         self.connect_mqtt()
         self.mqtt.loop_start()
 
-        command_topic = self.service_config["command_topic"]
-        state_topic = self.service_config["state_topic"]
+        command_template = self.service_config["command_topic_template"]
+        state_template = self.service_config["state_topic_template"]
         device_id = self.service_config["device_id"]
         room_id = self.service_config["room_id"]
+        command_topic = command_template.format(room_id=room_id)
+        state_topic = state_template.format(room_id=room_id)
 
         def handle_message(topic: str, payload: dict) -> None:
             desired_state = payload.get("state", "OFF")
@@ -34,9 +36,9 @@ class HvacConnector(ServiceBase):
                 room_id=room_id,
                 state=self._state,
             ).to_dict()
-            self.mqtt.publish_json(state_topic, state_payload)
+            self.mqtt.publish_json(state_topic, state_payload, qos=1, retain=True)
 
-        self.mqtt.subscribe([command_topic], handle_message)
+        self.mqtt.subscribe([(command_topic, 1)], handle_message)
         self._logger.info("HVAC listening on %s", command_topic)
         self.mqtt.loop_forever()
 

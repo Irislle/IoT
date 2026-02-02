@@ -20,9 +20,12 @@ class ThingSpeakAdapter(ServiceBase):
         self.mqtt.loop_start()
 
         cfg = self.service_config
-        topics = cfg["topics"]
+        topic_templates = cfg["topic_templates"]
         endpoint = cfg["endpoint"]
         api_key = cfg["api_key"]
+        rooms = cfg["rooms"]
+        topics = [template.format(room_id=room_id) for room_id in rooms for template in topic_templates]
+        subscriptions = [(topic, 1 if topic.endswith("/state") else 0) for topic in topics]
 
         def handle_message(topic: str, payload: dict) -> None:
             data = self._format_payload(api_key, topic, payload)
@@ -35,7 +38,7 @@ class ThingSpeakAdapter(ServiceBase):
             except requests.RequestException as exc:
                 self._logger.warning("ThingSpeak upload failed: %s", exc)
 
-        self.mqtt.subscribe(topics, handle_message)
+        self.mqtt.subscribe(subscriptions, handle_message)
         self._logger.info("ThingSpeak adapter subscribed to %s", topics)
         self.mqtt.loop_forever()
 

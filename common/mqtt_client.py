@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from typing import Callable, Iterable
 
@@ -25,6 +26,13 @@ class MqttServiceClient:
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
         self._client.reconnect_delay_set(min_delay=1, max_delay=30)
+        self._status_topic = f"iot/services/{client_id}/status"
+        self._client.will_set(
+            self._status_topic,
+            payload=json.dumps({"status": "OFFLINE", "ts": int(time.time())}),
+            qos=1,
+            retain=True,
+        )
 
     def connect(self) -> None:
         self._client.connect(self._config.host, self._config.port, self._config.keepalive)
@@ -38,7 +46,7 @@ class MqttServiceClient:
     def loop_stop(self) -> None:
         self._client.loop_stop()
 
-    def subscribe(self, topics: Iterable[str], handler: Callable[[str, dict], None]) -> None:
+    def subscribe(self, topics: Iterable[object], handler: Callable[[str, dict], None]) -> None:
         def on_message(client: mqtt.Client, userdata: object, msg: mqtt.MQTTMessage) -> None:
             try:
                 payload = json.loads(msg.payload.decode("utf-8"))
@@ -48,16 +56,26 @@ class MqttServiceClient:
 
         self._client.on_message = on_message
         for topic in topics:
-            self._client.subscribe(topic)
-            self._logger.info("Subscribed to %s", topic)
+            if isinstance(topic, tuple):
+                topic_name, qos = topic
+            else:
+                topic_name, qos = topic, 0
+            self._client.subscribe(topic_name, qos=qos)
+            self._logger.info("Subscribed to %s (qos=%s)", topic_name, qos)
 
-    def publish_json(self, topic: str, payload: dict) -> None:
+    def publish_json(self, topic: str, payload: dict, qos: int = 0, retain: bool = False) -> None:
         message = json.dumps(payload, separators=(",", ":"))
-        self._client.publish(topic, message)
+        self._client.publish(topic, message, qos=qos, retain=retain)
 
     def _on_connect(self, client: mqtt.Client, userdata: object, flags: dict, rc: int) -> None:
         if rc == 0:
             self._logger.info("Connected to MQTT broker")
+            client.publish(
+                self._status_topic,
+                json.dumps({"status": "ONLINE", "ts": int(time.time())}),
+                qos=1,
+                retain=True,
+            )
         else:
             self._logger.error("Failed to connect to MQTT broker: %s", rc)
 

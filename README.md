@@ -19,6 +19,7 @@ This project is **not** a direct copy of the reference example. It adapts the de
 - **Telegram Bot**: User-awareness and optional manual override interface; it is not part of the core control loop.
 - **Device Connector (HVAC)**: Applies HVAC commands (issued by the Telegram bot) and publishes state.
 - **ThingSpeak Adapter**: Subscribes to MQTT telemetry/state and pushes data to ThingSpeak via REST.
+- **Dashboard Consumer (CLI)**: Subscribes to key topics and prints real-time updates for observability.
 
 All exchanged data is JSON with shared identifiers such as `room_id` to correlate across components.
 
@@ -27,6 +28,9 @@ The `common/` package contains reusable base components that enforce object-orie
 
 **Scalability and extensibility**
 The architecture is intentionally configuration-driven. New rooms, devices, or services can be registered in the Home Catalog JSON configuration, allowing the system to scale to multiple rooms or deployments **without modifying source code**. This design emphasizes extensibility and aligns with academic expectations for maintainable IoT systems.
+
+**Topic conventions and reliability**
+Topics are namespaced by room to support multi-room deployments, e.g. `iot/{room_id}/temperature/raw`. Command and state topics use **QoS 1** to improve delivery reliability, and state topics are published with **retain** to expose the latest actuator/indicator status to late subscribers. Each service also advertises an MQTT **LWT** on `iot/services/{service_id}/status` to signal offline/online transitions.
 
 ## Quick start
 
@@ -60,6 +64,15 @@ python -m services.arduino_indicator
 python -m services.telegram_bot_service
 python -m services.hvac_connector
 python -m services.thingspeak_adapter
+python -m services.dashboard_consumer
+```
+
+### 4) (Optional) Docker Compose
+
+For a reproducible demo environment, start the broker, Home Catalog, and core services with Docker Compose:
+
+```bash
+docker compose up
 ```
 
 ## Configuration
@@ -72,7 +85,11 @@ All configuration is centralized in `config/home_catalog.json` and exposed by th
 - Thresholds and cooldowns
 - ThingSpeak API key
 
-The configuration format is intentionally extensible: you can register multiple rooms or devices by adding additional service entries and topic mappings in the Home Catalog file. This supports exam scenarios where the same microservice logic is reused across several environments without code edits.
+The configuration format is intentionally extensible: you can register multiple rooms or devices by adding additional service entries and topic mappings in the Home Catalog file. Topic templates (for example, `iot/{room_id}/temperature/raw`) plus a `rooms` list allow multi-room scaling without code edits. This supports exam scenarios where the same microservice logic is reused across several environments without code edits.
+
+The Home Catalog also exposes:
+- `GET /services` for service discovery.
+- `POST /register` to dynamically register a new service at runtime.
 
 ## Data formats
 

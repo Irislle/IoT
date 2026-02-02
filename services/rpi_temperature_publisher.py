@@ -19,11 +19,12 @@ class TemperaturePublisher(ServiceBase):
         self.connect_mqtt()
         self.mqtt.loop_start()
 
-        topic = self.service_config["topic"]
+        topic_template = self.service_config["topic_template"]
         sampling_s = self.service_config["sampling_s"]
         room_id = self.service_config["room_id"]
         device_id = self.service_config["device_id"]
 
+        topic = topic_template.format(room_id=room_id)
         self._logger.info("Publishing temperature telemetry to %s", topic)
         while True:
             now = int(time.time())

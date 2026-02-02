@@ -14,7 +14,7 @@ class TimeShiftProcessor(ServiceBase):
     def __init__(self, home_catalog_url: str) -> None:
         super().__init__("postprocess_time_shift", home_catalog_url)
         self._logger = logging.getLogger("postprocess_time_shift")
-        self._window: Deque[float] = deque(maxlen=1)
+        self._window: dict[str, Deque[float]] = {}
 
     def start(self) -> None:
         self.load_config()
@@ -22,27 +22,31 @@ class TimeShiftProcessor(ServiceBase):
         self.mqtt.loop_start()
 
         window_size = self.service_config["window_size"]
-        self._window = deque(maxlen=window_size)
-        input_topic = self.service_config["input_topic"]
-        output_topic = self.service_config["output_topic"]
+        input_template = self.service_config["input_topic_template"]
+        output_template = self.service_config["output_topic_template"]
+        rooms = self.service_config["rooms"]
 
         def handle_message(topic: str, payload: dict) -> None:
-            temp_c = payload.get("temp_c")
-            if temp_c is None:
-                self._logger.warning("Missing temp_c in payload: %s", payload)
+            try:
+                telemetry = TemperatureTelemetry.from_dict(payload)
+            except ValueError as exc:
+                self._logger.warning("%s", exc)
                 return
-            self._window.append(float(temp_c))
-            avg_temp = sum(self._window) / len(self._window)
+            window = self._window.setdefault(telemetry.room_id, deque(maxlen=window_size))
+            window.append(float(telemetry.temp_c))
+            avg_temp = sum(window) / len(window)
             processed = TemperatureTelemetry(
-                bn=payload.get("bn", "rpi-unknown"),
+                bn=telemetry.bn,
                 ts=int(time.time()),
-                room_id=payload.get("room_id", "unknown"),
+                room_id=telemetry.room_id,
                 temp_c=round(avg_temp, 2),
             ).to_dict()
+            output_topic = output_template.format(room_id=telemetry.room_id)
             self.mqtt.publish_json(output_topic, processed)
 
-        self.mqtt.subscribe([input_topic], handle_message)
-        self._logger.info("Processing %s -> %s", input_topic, output_topic)
+        input_topics = [(input_template.format(room_id=room_id), 0) for room_id in rooms]
+        self.mqtt.subscribe(input_topics, handle_message)
+        self._logger.info("Processing %s -> %s", input_template, output_template)
         self.mqtt.loop_forever()
 
 

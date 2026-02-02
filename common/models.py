@@ -23,6 +23,19 @@ class TemperatureTelemetry:
             "unit": self.unit,
         }
 
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "TemperatureTelemetry":
+        try:
+            return cls(
+                bn=str(payload["bn"]),
+                ts=int(payload["ts"]),
+                room_id=str(payload["room_id"]),
+                temp_c=float(payload["temp_c"]),
+                unit=str(payload.get("unit", "C")),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid TemperatureTelemetry payload: {payload}") from exc
+
 
 @dataclass
 class AlertEvent:
@@ -41,6 +54,19 @@ class AlertEvent:
             "temp_c": self.temp_c,
         }
 
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "AlertEvent":
+        try:
+            return cls(
+                ts=int(payload["ts"]),
+                room_id=str(payload["room_id"]),
+                type=str(payload["type"]),
+                level=str(payload["level"]),
+                temp_c=float(payload["temp_c"]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid AlertEvent payload: {payload}") from exc
+
 
 @dataclass
 class ActuatorState:
@@ -56,3 +82,15 @@ class ActuatorState:
             "room_id": self.room_id,
             "state": self.state,
         }
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "ActuatorState":
+        try:
+            return cls(
+                ts=int(payload["ts"]),
+                device=str(payload["device"]),
+                room_id=str(payload["room_id"]),
+                state=str(payload["state"]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid ActuatorState payload: {payload}") from exc

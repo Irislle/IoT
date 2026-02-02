@@ -25,7 +25,8 @@ This document consolidates the **overall framework structure** and a **code-leve
     ├── arduino_indicator.py
     ├── telegram_bot_service.py
     ├── hvac_connector.py
-    └── thingspeak_adapter.py
+    ├── thingspeak_adapter.py
+    └── dashboard_consumer.py
 ```
 
 ## 2) Core Architectural Principles
@@ -40,14 +41,17 @@ This document consolidates the **overall framework structure** and a **code-leve
 ### `config/home_catalog.json`
 Defines the MQTT broker information and per-service configuration. Examples include:
 - MQTT host/port/keepalive
-- topics for raw/processed temperature
+- topic templates for raw/processed temperature (e.g. `iot/{room_id}/temperature/raw`)
 - alert thresholds + cooldown
 - Telegram and ThingSpeak credentials
+Room lists (`rooms`) enable multi-room subscriptions without code changes.
 
 ### `home_catalog/app.py`
 A minimal FastAPI service exposing:
 - `GET /mqtt` → returns broker config
 - `GET /config/{service_name}` → returns service-specific JSON config
+- `GET /services` → returns registered service names
+- `POST /register` → dynamically register a new service
 
 ## 4) Shared Package (`common/`)
 
@@ -58,9 +62,9 @@ A reusable REST client for the Home Catalog. All microservices call:
 
 ### `common/mqtt_client.py`
 A simple MQTT wrapper around `paho-mqtt` with:
-- connection handling
+- connection handling + LWT service status topics
 - automatic reconnect with bounded backoff
-- JSON publish helper
+- JSON publish helper (QoS + retain support)
 - JSON decode + subscription helper
 
 ### `common/models.py`
@@ -68,6 +72,7 @@ Shared data structures for JSON payloads:
 - `TemperatureTelemetry`
 - `AlertEvent`
 - `ActuatorState`
+Each model also provides `from_dict` validation for basic schema checks.
 
 ### `common/service_base.py`
 Base class that standardizes:
@@ -117,6 +122,10 @@ Centralized runtime helper to read `HOME_CATALOG_URL` (with default fallback).
 - Subscribes to telemetry/state topics
 - Pushes data to ThingSpeak via REST
 
+### `dashboard_consumer.py`
+- Lightweight CLI dashboard for observability
+- Subscribes to telemetry/alerts/state topics and prints updates
+
 ## 6) End-to-End Data Flow Summary
 
 1. RPi connector publishes **raw temperature** → MQTT
@@ -130,3 +139,7 @@ Centralized runtime helper to read `HOME_CATALOG_URL` (with default fallback).
 ## 7) How to Run (Single-Sentence Reminder)
 
 Start the Home Catalog, then launch each service as its own process; all configuration is retrieved dynamically from the REST catalog.
+
+## 8) Reproducible Environment (Optional)
+
+`docker-compose.yml` provides a minimal stack with Mosquitto, the Home Catalog, and core services to help reproduce the visible data flow in a consistent way.
