@@ -69,7 +69,7 @@ python -m services.dashboard_consumer
 
 ### 4) (Optional) Docker Compose
 
-For a reproducible demo environment, start the broker, Home Catalog, and core services with Docker Compose:
+For a demo environment, start the broker, Home Catalog, and core services with Docker Compose. This is optional and may require building the image and installing dependencies during the first run:
 
 ```bash
 docker compose up

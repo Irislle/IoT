@@ -105,7 +105,7 @@ class AlertStrategy(ServiceBase):
             level=level,
             temp_c=float(temp_c),
         ).to_dict()
-        self.mqtt.publish_json(topic, payload)
+        self.mqtt.publish_json(topic, payload, qos=1)
         self._logger.info("Published alert %s for %s", alert_type, room_id)
 
 

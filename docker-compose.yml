@@ -5,10 +5,9 @@ services:
     image: eclipse-mosquitto:2.0
     ports:
       - "1883:1883"
-    command: ["mosquitto", "-c", "/mosquitto-no-auth.conf"]
 
   home_catalog:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
@@ -19,7 +18,7 @@ services:
       - mosquitto
 
   rpi_temperature_publisher:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
@@ -30,7 +29,7 @@ services:
       - home_catalog
 
   postprocess_time_shift:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
@@ -41,7 +40,7 @@ services:
       - home_catalog
 
   alert_strategy:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
@@ -52,7 +51,7 @@ services:
       - home_catalog
 
   arduino_indicator:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
@@ -63,7 +62,7 @@ services:
       - home_catalog
 
   hvac_connector:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
@@ -74,7 +73,7 @@ services:
       - home_catalog
 
   dashboard_consumer:
-    image: python:3.11-slim
+    build: .
     working_dir: /app
     volumes:
       - ./:/app
