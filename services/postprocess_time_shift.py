@@ -14,7 +14,7 @@ class TimeShiftProcessor(ServiceBase):
     def __init__(self, home_catalog_url: str) -> None:
         super().__init__("postprocess_time_shift", home_catalog_url)
         self._logger = logging.getLogger("postprocess_time_shift")
-        self._window: Deque[float] = deque(maxlen=1)
+        self._window: dict[str, Deque[float]] = {}
 
     def start(self) -> None:
         self.load_config()
@@ -22,7 +22,6 @@ class TimeShiftProcessor(ServiceBase):
         self.mqtt.loop_start()
 
         window_size = self.service_config["window_size"]
-        self._window = deque(maxlen=window_size)
         input_template = self.service_config["input_topic_template"]
         output_template = self.service_config["output_topic_template"]
         rooms = self.service_config["rooms"]
@@ -33,8 +32,9 @@ class TimeShiftProcessor(ServiceBase):
             except ValueError as exc:
                 self._logger.warning("%s", exc)
                 return
-            self._window.append(float(telemetry.temp_c))
-            avg_temp = sum(self._window) / len(self._window)
+            window = self._window.setdefault(telemetry.room_id, deque(maxlen=window_size))
+            window.append(float(telemetry.temp_c))
+            avg_temp = sum(window) / len(window)
             processed = TemperatureTelemetry(
                 bn=telemetry.bn,
                 ts=int(time.time()),
