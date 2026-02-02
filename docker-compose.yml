@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883"
+
+  home_catalog:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: ["python", "-m", "home_catalog.app"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mosquitto
+
+  rpi_temperature_publisher:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - HOME_CATALOG_URL=http://home_catalog:8000
+    command: ["python", "-m", "services.rpi_temperature_publisher"]
+    depends_on:
+      - home_catalog
+
+  postprocess_time_shift:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - HOME_CATALOG_URL=http://home_catalog:8000
+    command: ["python", "-m", "services.postprocess_time_shift"]
+    depends_on:
+      - home_catalog
+
+  alert_strategy:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - HOME_CATALOG_URL=http://home_catalog:8000
+    command: ["python", "-m", "services.alert_strategy"]
+    depends_on:
+      - home_catalog
+
+  arduino_indicator:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - HOME_CATALOG_URL=http://home_catalog:8000
+    command: ["python", "-m", "services.arduino_indicator"]
+    depends_on:
+      - home_catalog
+
+  hvac_connector:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - HOME_CATALOG_URL=http://home_catalog:8000
+    command: ["python", "-m", "services.hvac_connector"]
+    depends_on:
+      - home_catalog
+
+  dashboard_consumer:
+    build: .
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      - HOME_CATALOG_URL=http://home_catalog:8000
+    command: ["python", "-m", "services.dashboard_consumer"]
+    depends_on:
+      - home_catalog
